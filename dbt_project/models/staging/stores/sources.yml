@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: raw
+    database: BRIDGESTONE_DW
+    schema: RAW
+    tables:
+      - name: STORE_FILES_RAW
+

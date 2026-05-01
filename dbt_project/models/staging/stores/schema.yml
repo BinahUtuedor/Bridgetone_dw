@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: stg_store_files
+    columns:
+      - name: transaction_id
+        tests:
+          - not_null
+          - unique
+
+      - name: store_id
+        tests:
+          - not_null
+
+      - name: product_id
+        tests:
+          - not_null

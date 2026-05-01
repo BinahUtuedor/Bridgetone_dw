@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  airflow:
+    image: apache/airflow:2.9.1
+    container_name: airflow_bridgestone
+    restart: always
+
+    # Load environment variables from root .env file
+    env_file:
+      - ../.env
+
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+
+      # Replace this with a real generated key
+      AIRFLOW__CORE__FERNET_KEY: "NPomONxcknq9osGRdOYZYNJ5SmYoW71ZH61ocp8F7bk="
+
+      # Airbyte creds (pulled from .env)
+      AIRBYTE_API_TOKEN: ${AIRBYTE_API_TOKEN}
+      AIRBYTE_CONNECTION_ID: ${AIRBYTE_CONNECTION_ID}
+
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ../dbt_project:/opt/airflow/dbt_project
+      - ../.dbt:/opt/airflow/.dbt
+
+    ports:
+      - "8080:8080"
+
+    command: >
+      bash -c "
+      pip install --no-cache-dir dbt-snowflake requests &&
+      airflow db migrate &&
+      airflow users create
+        --username admin
+        --password admin
+        --firstname admin
+        --lastname admin
+        --role Admin
+        --email admin@example.com || true &&
+      airflow standalone
+      "

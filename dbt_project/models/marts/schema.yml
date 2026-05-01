@@ -1,0 +1,23 @@
+4version: 2
+
+models:
+  - name: fct_store_sales
+    description: "Fact table containing all store transactions"
+
+    columns:
+      - name: transaction_id
+        tests:
+          - not_null
+          - unique
+
+      - name: store_id
+        tests:
+          - relationships:
+              to: ref('dim_stores')
+              field: store_id
+
+      - name: product_id
+        tests:
+          - relationships:
+              to: ref('dim_products')
+              field: product_id
