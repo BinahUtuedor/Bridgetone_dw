@@ -16,7 +16,7 @@ services:
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
 
       # Replace this with a real generated key
-      AIRFLOW__CORE__FERNET_KEY: "NPomONxcknq9osGRdOYZYNJ5SmYoW71ZH61ocp8F7bk="
+      AIRFLOW__CORE__FERNET_KEY: FERNET_KEY
 
       # Airbyte creds (pulled from .env)
       AIRBYTE_API_TOKEN: ${AIRBYTE_API_TOKEN}
