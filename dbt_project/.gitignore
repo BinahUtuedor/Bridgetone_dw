@@ -2,3 +2,7 @@
 target/
 dbt_packages/
 logs/
+.env
+venv
+venv/
+README.md

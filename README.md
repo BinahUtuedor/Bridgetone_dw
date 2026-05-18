@@ -29,55 +29,7 @@ Documentation – dbt generates lineage graphs, documentation, and an ERD.
 
 
 ## 📊 Architecture Diagrams
-Below are two versions of the architecture diagram — Mermaid and ASCII.
-
-### Mermaid Architecture Diagram
-```text
-flowchart LR
-    subgraph Source
-        A[Google Drive<br/>CSV Files]
-    end
-
-    subgraph Ingestion
-        B[Airbyte Cloud<br/>Ingestion]
-    end
-
-    subgraph Warehouse[Snowflake]
-        C[RAW Schema]
-        D[STAGING Schema]
-        E[INTERMEDIATE Schema]
-        F[MARTS Schema<br/>Dimensions & Facts]
-    end
-
-    subgraph Transform[dbt]
-        G[Staging Models]
-        H[Intermediate Models]
-        I[Dim & Fact Models]
-        J[dbt Tests]
-    end
-
-    subgraph Orchestration[Apache Airflow]
-        K[Airbyte Sync Trigger]
-        L[dbt Run]
-        M[dbt Test]
-    end
-
-    subgraph BI
-        N[Power BI Reports]
-    end
-
-    A --> B --> C
-    C --> G --> D
-    D --> H --> E
-    E --> I --> F
-    I --> N
-
-    K --> B
-    L --> I
-    M --> J
-```
-
-### ASCII Architecture Diagram
+Below is the ASCII architecture diagram.
 
 ```text
 +------------------+        +------------------+        +----------------------+
@@ -119,12 +71,12 @@ flowchart LR
 
 ```text
 bridgestone_dw/
-├── airflow/
-│   ├── dags/
-│   │   └── bridgestone_pipeline.py      # Airflow DAG
-│   ├── plugins/
-│   ├── logs/
-│   └── docker-compose.yml
+│
+├── .astro/
+│       └──config.yaml
+│       └──config.yaml.lock
+│       └──dag_integrity_exceptions.txt
+│       └──test_dag_integrity_default.py
 ├── dbt_project/
 │   ├── models/
 │   │   ├── staging/
@@ -133,19 +85,43 @@ bridgestone_dw/
 │   │   │       └── schema.yml
 │   │   ├── intermediate/
 │   │   │   └── int_store_unioned.sql
-│   │   └── marts/
-│   │       ├── dimensions/
-│   │       │   ├── dim_stores.sql
-│   │       │   ├── dim_products.sql
-│   │       │   ├── dim_customers.sql
-│   │       │   └── dim_date.sql
-│   │       └── facts/
-│   │           └── fct_store_sales.sql
+│   │   │
+│   │   ├── marts/
+│   │   │    ├── dimensions/
+│   │   │    │    ├── dim_stores.sql
+│   │   │    │    ├── dim_products.sql
+│   │   │    │    ├── dim_customers.sql
+│   │   │    │    └── dim_date.sql
+│   │   │    └── facts/
+│   │   │         └── fct_store_sales.sql
+│   │   └── reporting/
+│   │        └── rpt_sales_summary
+│   │        └── rpt_monthly_store_sales
+│   │        └── rpt_product_performance
+│   │        └── rpt_customer_sales
 │   ├── macros/
-│   │   └── generate_schema_name.sql
+│   │   ├── generate_schema_name.sql
+│   │   ├── surrogate_keys.sql
+│   │   ├── auditing.sql
+│   │   ├── formatting.sql
+│   │   ├── dates.sql
+│   │   ├── testing.sql
+│   │   ├── incremental.sql
+│   │   ├── null_handling.sql
+│   │   ├── kpi_calculations.sql
+│   │   └── utilities.sql
 │   ├── tests/
+│   │     └── test_duplicate_transaction_ids.sql
+│   │     └── test_negative_sales.sql
+│   │     └── test_invalid_quantity.sql
+│   │     └── test_missing_product_category.sql
+│   │     └── test_future_transactions.sql
 │   ├── dbt_project.yml
 │   └── README.md
+├── dags/
+│    └──.airflowignore
+│    └──exampledag.py
+│    └── bridgestone_pipeline.py      # Airflow DAG
 ├── venv/
 ├── .env
 ├── .gitignore
@@ -310,149 +286,7 @@ dbt docs serve
 
 ### 6. Airflow Orchestration
 
-🛠️ Airflow Configuration (Full DAG Included)
-This project uses Apache Airflow to orchestrate:
-
-📄 Airflow DAG: bridgestone_pipeline.py
-
-```python
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
-from datetime import datetime, timedelta
-import requests
-import time
-import os
-
-## =========================
-## CONFIG (UPDATE THESE)
-## =========================
-AIRBYTE_API_TOKEN = os.getenv("AIRBYTE_API_TOKEN")
-AIRBYTE_CONNECTION_ID = os.getenv("AIRBYTE_CONNECTION_ID")
-
-DBT_PROJECT_DIR = "/opt/airflow/dbt_project"
-DBT_PROFILES_DIR = "/opt/airflow/.dbt"
-
-## =========================
-## DEFAULT DAG CONFIG
-## =========================
-default_args = {
-    "owner": "airflow",
-    "depends_on_past": False,
-    "retries": 1,
-    "retry_delay": timedelta(minutes=5),
-}
-
-# =========================
-# FUNCTION: TRIGGER AIRBYTE SYNC
-# =========================
-def trigger_airbyte_sync(**kwargs):
-    url = "https://api.airbyte.com/v1/jobs"
-
-    headers = {
-        "Authorization": f"Bearer {AIRBYTE_API_TOKEN}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "connectionId": AIRBYTE_CONNECTION_ID
-    }
-
-    response = requests.post(url, json=payload, headers=headers)
-    response.raise_for_status()
-
-    job_id = response.json()["jobId"]
-
-    print(f"Triggered Airbyte Job: {job_id}")
-
-    return job_id
-
-## =========================
-## FUNCTION: WAIT FOR AIRBYTE
-## =========================
-def wait_for_airbyte_job(**kwargs):
-    ti = kwargs['ti']
-    job_id = ti.xcom_pull(task_ids='trigger_airbyte_sync')
-
-    url = f"https://api.airbyte.com/v1/jobs/{job_id}"
-
-    headers = {
-        "Authorization": f"Bearer {AIRBYTE_API_TOKEN}"
-    }
-
-    while True:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-
-        status = response.json()["status"]
-        print(f"Airbyte job status: {status}")
-
-        if status == "succeeded":
-            break
-        elif status in ["failed", "cancelled"]:
-            raise Exception(f"Airbyte job failed with status: {status}")
-
-        time.sleep(30)
-
-## =========================
-## DAG DEFINITION
-## =========================
-with DAG(
-    dag_id="bridgestone_pipeline",
-    default_args=default_args,
-    description="Airbyte → dbt → Snowflake pipeline",
-    schedule_interval="@daily",
-    start_date=datetime(2024, 1, 1),
-    catchup=False,
-    tags=["bridgestone", "elt"],
-) as dag:
-
-    trigger_sync = PythonOperator(
-        task_id="trigger_airbyte_sync",
-        python_callable=trigger_airbyte_sync,
-    )
-
-    wait_sync = PythonOperator(
-        task_id="wait_for_airbyte_job",
-        python_callable=wait_for_airbyte_job,
-    )
-
-    dbt_run = BashOperator(
-        task_id="dbt_run",
-        bash_command=f"""
-        cd {DBT_PROJECT_DIR} &&
-        dbt run --profiles-dir {DBT_PROFILES_DIR}
-        """
-    )
-
-    dbt_test = BashOperator(
-        task_id="dbt_test",
-        bash_command=f"""
-        cd {DBT_PROJECT_DIR} &&
-        dbt test --profiles-dir {DBT_PROFILES_DIR}
-        """
-    )
-
-    trigger_sync >> wait_sync >> dbt_run >> dbt_test
-```
-
-Airbyte sync
-
-dbt run
-
-dbt test
-
-Your full DAG is included below.
-Airbyte Credentials
-API Token: Airbyte Cloud → Settings → Create Application
-
-Connection ID: Airbyte → Connections → URL parameter
-
-Environment Variables
-
-AIRBYTE_API_TOKEN=<your_token>
-AIRBYTE_CONNECTION_ID=<your_connection_id>
-
+Configure the airflow DAG bridgestone_pipeline.py
 
 ### Start Airflow
 cd airflow and run
@@ -535,8 +369,218 @@ erDiagram
     FACT_STORE_SALES ||--|| DIM_DATE : sale_date
 ```
 
+Add a Reporting/Aggregate Layer?
+
+Your current fct_store_sales table is:
+
+transaction-grain
+detailed
+normalized for analytics flexibility
+
+That is excellent for:
+
+drilldowns
+detailed analysis
+data science
+ad hoc queries
+
+But dashboards often repeatedly calculate:
+
+monthly sales
+category summaries
+top products
+store KPIs
+
+on millions of rows.
+
+This becomes:
+
+slower
+more expensive
+harder to maintain
+Purpose of the Reporting Layer
+
+The reporting layer contains:
+
+pre-aggregated tables
+KPI-ready datasets
+business-facing models
+dashboard-specific summaries
+
+Think of it as:
+
+“Power BI ready-to-consume datasets.”
+
+Recommended Updated Structure
+bridgestone_dw/
+├── airflow/
+├── dbt_project/
+│   ├── models/
+│   │   ├── staging/
+│   │   ├── intermediate/
+│   │   ├── marts/
+│   │   │   ├── dimensions/
+│   │   │   └── facts/
+│   │   └── reporting/
+│   │       ├── rpt_sales_summary.sql
+│   │       ├── rpt_monthly_store_sales.sql
+│   │       ├── rpt_product_performance.sql
+│   │       └── rpt_customer_sales.sql
+Recommended Reporting Models
+1. rpt_sales_summary.sql
+
+High-level KPI table.
+
+Purpose:
+
+executive dashboard
+KPI cards
+daily monitoring
+
+Example:
+
+{{ config(materialized='table') }}
+
+select
+    date,
+    sum(total_amount) as total_sales,
+    sum(quantity) as total_quantity,
+    count(distinct transaction_id) as total_transactions,
+    count(distinct customer_id) as unique_customers
+from {{ ref('fct_store_sales') }}
+group by date
+Why This Exists
+
+Without this:
+
+Power BI recalculates millions of rows repeatedly
+
+With aggregates:
+
+dashboards become extremely fast
+2. rpt_monthly_store_sales.sql
+
+Purpose:
+
+regional/store performance dashboards
+
+Example:
+
+{{ config(materialized='table') }}
+
+select
+    d.year,
+    d.month,
+    f.store_id,
+
+    sum(f.total_amount) as monthly_sales,
+    sum(f.quantity) as items_sold,
+    count(distinct f.transaction_id) as transactions
+
+from {{ ref('fct_store_sales') }} f
+join {{ ref('dim_date') }} d
+    on f.date_key = d.date_key
+
+group by
+    d.year,
+    d.month,
+    f.store_id
+Benefits
+
+This allows Power BI to directly query:
+
+monthly totals
+trends
+store rankings
+
+without recalculating raw transactions.
+
+3. rpt_product_performance.sql
+
+Purpose:
+
+product/category analysis
+inventory insights
+best sellers
+
+Example:
+
+{{ config(materialized='table') }}
+
+select
+    d.year,
+    d.month,
+
+    p.category,
+    p.product_name,
+
+    sum(f.quantity) as units_sold,
+    sum(f.total_amount) as revenue
+
+from {{ ref('fct_store_sales') }} f
+join {{ ref('dim_products') }} p
+    on f.product_id = p.product_id
+join {{ ref('dim_date') }} d
+    on f.date_key = d.date_key
+
+group by
+    d.year,
+    d.month,
+    p.category,
+    p.product_name
+4. rpt_customer_sales.sql
+
+Purpose:
+
+customer spending analysis
+segmentation
+loyalty analytics
+
+Example:
+
+{{ config(materialized='table') }}
+
+select
+    customer_id,
+
+    count(distinct transaction_id) as transaction_count,
+    sum(total_amount) as lifetime_value,
+    avg(total_amount) as avg_transaction_value
+
+from {{ ref('fct_store_sales') }}
+
+group by customer_id
+Why This Layer Matters in Real Companies
+
+Large organizations often separate:
+
+Layer	Audience
+Facts/Dimensions	Data engineers & analysts
+Reporting Models	BI developers
+Dashboards	Business users
+
+This separation:
+
+improves maintainability
+standardizes KPIs
+avoids duplicated calculations
+improves performance
+Materialization Strategy
+Layer	Recommended Materialization
+Staging	View
+Intermediate	View
+Dimensions	Table
+Facts	Incremental/Table
+Reporting	Table or Incremental
+
+Why reporting models should usually be tables:
+
+precomputed
+optimized for BI queries
+avoids recalculating aggregations
+
 ### Testing
-dbt tests include:
+dbt general tests include:
 
 Schema tests: unique, not_null
 
@@ -544,9 +588,418 @@ Custom tests: business logic validations
 
 Source freshness checks
 
+
+Add singular tests
+Step 1 — Create the Tests Folder
+
+Inside your dbt project:
+
+dbt_project/
+├── tests/
+
+Step 2 — Create a Singular Test File
+
+Example:
+
+tests/test_total_amount_matches.sql
+Step 3 — Write the SQL Test
+
+Example:
+
+-- tests/test_total_amount_matches.sql
+
+select *
+from {{ ref('int_store_unioned') }}
+where total_amount != calculated_amount
+
+Purpose:
+
+identifies mismatched transaction totals
+
+If rows appear:
+
+test fails
+dbt reports problematic rows
+Step 4 — Run the Test
+
+Execute:
+
+dbt test
+
+Or run a specific test:
+
+dbt test --select test_total_amount_matches
+1. Recommended Singular Tests for Your Project
+A. Duplicate Transaction IDs
+-- tests/test_duplicate_transaction_ids.sql
+
+select
+    transaction_id,
+    count(*) as cnt
+from {{ ref('fct_store_sales') }}
+group by transaction_id
+having count(*) > 1
+
+Purpose:
+
+ensures transaction uniqueness
+B. Negative Sales Amounts
+-- tests/test_negative_sales.sql
+
+select *
+from {{ ref('fct_store_sales') }}
+where total_amount < 0
+
+Purpose:
+
+catches invalid sales data
+C. Invalid Quantities
+-- tests/test_invalid_quantity.sql
+
+select *
+from {{ ref('fct_store_sales') }}
+where quantity <= 0
+
+Purpose:
+
+prevents impossible sales quantities
+D. Missing Product Categories
+-- tests/test_missing_product_category.sql
+
+select *
+from {{ ref('dim_products') }}
+where category is null
+
+Purpose:
+
+ensures product classification quality
+E. Future Transaction Dates
+-- tests/test_future_transactions.sql
+
+select *
+from {{ ref('fct_store_sales') }}
+where date > current_date
+
+Purpose:
+
+catches timestamp/data entry issues
+6. Difference Between Singular and Generic Tests
+Generic Tests	Singular Tests
+Prebuilt	Custom SQL
+Defined in YAML	Defined in SQL
+Reusable	Highly specific
+Examples: unique, not_null	Business rules
+
 Run tests:
 
 dbt test
+
+Add macros
+
+1. Surrogate Key Macro
+
+One of the most important macros.
+
+File
+macros/surrogate_keys.sql
+Macro
+{% macro generate_surrogate_key(columns) %}
+
+md5(
+    {% for column in columns %}
+        coalesce(cast({{ column }} as varchar), '')
+        {% if not loop.last %} || '|' || {% endif %}
+    {% endfor %}
+)
+
+{% endmacro %}
+Why This Is Important
+
+Used for:
+
+dimension surrogate keys
+deduplication
+SCD handling
+composite business keys
+Example Usage
+{{ generate_surrogate_key([
+    'store_id',
+    'product_id',
+    'transaction_timestamp'
+]) }} as sales_sk
+2. Audit Columns Macro
+
+Very common enterprise pattern.
+
+File
+macros/auditing.sql
+Macro
+{% macro audit_columns() %}
+
+current_timestamp() as created_at,
+current_timestamp() as updated_at
+
+{% endmacro %}
+Usage
+select
+    transaction_id,
+    total_amount,
+
+    {{ audit_columns() }}
+
+from sales
+Why Useful
+
+Adds:
+
+lineage
+auditing
+warehouse governance
+debugging capability
+3. Safe Division Macro
+
+Prevents divide-by-zero errors.
+
+File
+macros/utilities.sql
+Macro
+{% macro safe_divide(numerator, denominator) %}
+
+case
+    when {{ denominator }} = 0 then null
+    else {{ numerator }} / {{ denominator }}
+end
+
+{% endmacro %}
+Usage
+{{ safe_divide('total_sales', 'transaction_count') }}
+    as avg_order_value
+Why Important
+
+Very common in:
+
+KPI calculations
+reporting models
+finance metrics
+4. Standardized Payment Method Macro
+
+Centralize business logic.
+
+File
+macros/formatting.sql
+Macro
+{% macro standardize_payment_method(column_name) %}
+
+case
+    when lower(trim({{ column_name }})) in ('card', 'credit card')
+        then 'card'
+
+    when lower(trim({{ column_name }})) in ('cash')
+        then 'cash'
+
+    when lower(trim({{ column_name }})) in ('transfer', 'bank transfer')
+        then 'transfer'
+
+    else 'other'
+end
+
+{% endmacro %}
+Usage
+{{ standardize_payment_method('payment_method') }}
+    as payment_method
+Why This Matters
+
+Instead of duplicating:
+
+case when ...
+
+everywhere,
+you centralize logic once.
+
+Huge maintainability improvement.
+
+5. Date Spine Macro
+
+Reusable calendar generator.
+
+File
+macros/dates.sql
+Macro
+{% macro generate_date_spine(start_date, num_days) %}
+
+select
+    dateadd(day, seq4(), '{{ start_date }}') as date_day
+from table(generator(rowcount => {{ num_days }}))
+
+{% endmacro %}
+Usage
+with date_spine as (
+
+    {{ generate_date_spine('2020-01-01', 4018) }}
+
+)
+Why Useful
+
+Avoids hardcoding:
+
+generator logic
+repetitive date spine SQL
+6. Amount Validation Macro
+
+Useful for data quality.
+
+File
+macros/testing.sql
+Macro
+{% macro validate_total_amount(quantity, unit_price, total_amount) %}
+
+(
+    {{ quantity }} * {{ unit_price }}
+) = {{ total_amount }}
+
+{% endmacro %}
+Usage in Tests
+select *
+from {{ ref('fct_store_sales') }}
+where not (
+    {{ validate_total_amount(
+        'quantity',
+        'unit_price',
+        'total_amount'
+    ) }}
+)
+7. Incremental Filter Macro
+
+Very useful later.
+
+File
+macros/incremental.sql
+Macro
+{% macro incremental_filter(timestamp_column) %}
+
+{% if is_incremental() %}
+
+where {{ timestamp_column }} >
+(
+    select max({{ timestamp_column }})
+    from {{ this }}
+)
+
+{% endif %}
+
+{% endmacro %}
+Usage
+select *
+from source_table
+
+{{ incremental_filter('_airbyte_extracted_at') }}
+Why Important
+
+Supports:
+
+faster dbt runs
+production scalability
+lower Snowflake costs
+
+8. Null Handling Macro
+File Name
+macros/null_handling.sql
+Macro
+{% macro null_if_blank(column_name) %}
+
+case
+    when trim({{ column_name }}) = '' then null
+    else trim({{ column_name }})
+end
+
+{% endmacro %}
+Why This File Exists
+
+Purpose:
+
+standardize blank values
+clean dirty ingestion data
+improve data quality
+
+Typical problems solved:
+
+empty strings
+whitespace-only values
+inconsistent CSV ingestion
+Usage Example
+
+Inside stg_store_files.sql:
+
+select
+    {{ null_if_blank('customer_id') }} as customer_id,
+    {{ null_if_blank('product_name') }} as product_name
+from source
+9. Generic KPI Macro
+File Name
+macros/kpi_calculations.sql
+Macro
+{% macro calculate_avg_order_value(sales, transactions) %}
+
+{{ safe_divide(sales, transactions) }}
+
+{% endmacro %}
+Dependency
+
+This macro depends on:
+
+macros/utilities.sql
+
+which contains:
+
+{% macro safe_divide(numerator, denominator) %}
+
+case
+    when {{ denominator }} = 0 then null
+    else {{ numerator }} / {{ denominator }}
+end
+
+{% endmacro %}
+
+Why Separate KPI Macros into Their Own File
+
+This improves:
+
+readability
+organization
+business metric governance
+semantic consistency
+
+In enterprise projects:
+
+KPI logic is centralized
+reused across reporting models
+reused across dashboards
+Usage Example
+
+Inside:
+
+models/reporting/rpt_sales_summary.sql
+select
+    sum(total_amount) as total_sales,
+    count(distinct transaction_id) as transaction_count,
+
+    {{ calculate_avg_order_value(
+        'sum(total_amount)',
+        'count(distinct transaction_id)'
+    ) }} as avg_order_value
+
+from {{ ref('fct_store_sales') }}
+
+Install astro to your local machine
+
+Orchestration with Airflow
+initialize Astro in your project
+astro dev init
+Start Airflow locally
+
+After init, run:
+
+astro dev start
 
 ## 📈 Future Enhancements
 Add CI/CD (GitHub Actions)
