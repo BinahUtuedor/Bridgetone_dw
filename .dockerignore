@@ -9,5 +9,4 @@ __pycache__/
 *.pyc
 airflow.db
 airflow.cfg
-Bridgetone AI instructions.docx
 README.md
