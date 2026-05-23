@@ -837,12 +837,54 @@ Boolean flags (is_weekend, is_today, is_current_year)
 
 ## Troubleshooting
 ### Common Issues & Solutions
-Issue	Solution
-dbt cannot connect to Snowflake	Check .env variables and profiles.yml
-Airbyte sync fails	Verify Google Drive credentials and file paths
-Airflow DAG fails	Check logs: astro dev logs --follow
-Duplicate records in staging	Verify row_number() partition columns
-Permission denied in Snowflake	Run ACCOUNTADMIN GRANT statements
+# Troubleshooting Guide: dbt, Airbyte, Airflow, Snowflake
+
+This document provides solutions to common issues encountered in data pipelines using **dbt**, **Airbyte**, **Airflow (Astro)**, and **Snowflake**.
+
+---
+
+## Issues & Solutions
+
+| Issue | Solution |
+|-------|----------|
+| **dbt cannot connect to Snowflake** | Check `.env` variables and `profiles.yml` |
+| **Airbyte sync fails** | Verify Google Drive credentials and file paths |
+| **Airflow DAG fails** | Check logs: `astro dev logs --follow` |
+| **Duplicate records in staging** | Verify `row_number()` partition columns |
+| **Permission denied in Snowflake** | Run `ACCOUNTADMIN GRANT` statements |
+
+---
+
+## Detailed Resolution Steps
+
+### 1. dbt cannot connect to Snowflake
+- **Check:** Ensure environment variables (e.g., `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PASSWORD`, `SNOWFLAKE_DATABASE`) are correctly set.
+- **Check:** Validate `profiles.yml` syntax and target schema.
+- **Test connection:** Run `dbt debug` to get detailed error logs.
+
+### 2. Airbyte sync fails
+- **Check:** Google Drive credentials (OAuth or service account) are still valid.
+- **Check:** Source file paths have not been moved or renamed.
+- **Check:** Airbyte connector version is up-to-date.
+
+### 3. Airflow DAG fails
+- **View logs:** Use `astro dev logs --follow` for real-time log streaming.
+- **Check:** Task dependencies, variable references, and connection IDs in Airflow UI.
+- **Restart:** `astro dev restart` if the scheduler is unresponsive.
+
+### 4. Duplicate records in staging
+- **Verify:** `row_number()` window function is partitioned by **all unique key columns** (e.g., `PARTITION BY id, date`).
+- **Verify:** `QUALIFY row_number() = 1` or similar deduplication logic is applied.
+- **Check for:** Multiple runs of the same pipeline without proper incremental logic.
+
+### 5. Permission denied in Snowflake
+- **Run as ACCOUNTADMIN:** Use a role with `ACCOUNTADMIN` privileges.
+- **Grant necessary permissions:**
+  ```sql
+  GRANT USAGE ON DATABASE your_db TO ROLE your_role;
+  GRANT USAGE ON SCHEMA your_schema TO ROLE your_role;
+  GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO ROLE your_role;
+  ```
 
 ### Useful Debug Queries
 
@@ -865,6 +907,13 @@ FROM BRIDGESTONE_DW.MARTS.FCT_STORE_SALES f
 LEFT JOIN BRIDGESTONE_DW.MARTS.DIM_DATE d ON f.date_key = d.date_key
 WHERE d.date_key IS NULL;
 ```
+
+## Need More Help?
+
+- **dbt:** [dbt Community Slack](https://community.getdbt.com/)
+- **Airbyte:** [Airbyte Docs](https://docs.airbyte.com/)
+- **Airflow:** [Astro CLI Docs](https://docs.astronomer.io/astro/cli-overview)
+- **Snowflake:** [Snowflake Support](https://support.snowflake.com/)
 
 ## Future Enhancements
 Add CI/CD pipeline with GitHub Actions
