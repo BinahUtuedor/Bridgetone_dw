@@ -18,6 +18,7 @@ This repository contains an end-to-end ELT data pipeline that ingests raw CSV fi
 
 ## End-to-End Workflow
 
+```text
 Ingestion → Airbyte extracts CSV files from Google Drive → Snowflake RAW schema
 ↓
 Staging → dbt standardizes and cleans raw data → STAGING schema (views)
@@ -35,7 +36,7 @@ Orchestration → Airflow schedules the entire workflow daily
 Documentation → dbt docs generate lineage + ERD + metadata
 ↓
 Visualization → Power BI consumes curated tables for dashboards
-
+```
 ## Architecture Diagram
 
 ```text
@@ -318,6 +319,7 @@ GRANT ROLE DBT_ROLE TO USER DBT_USER;
 - Create a .env file in the project root:
 
 .env
+```text
 SNOWFLAKE_ACCOUNT=<your_account>
 SNOWFLAKE_USER=DBT_USER
 SNOWFLAKE_PASSWORD=<your_password>
@@ -328,7 +330,7 @@ SNOWFLAKE_SCHEMA=STAGING
 AIRBYTE_API_TOKEN=<your_airbyte_token>
 AIRBYTE_CONNECTION_ID=<your_connection_id>
 FERNET_KEY=<generated_fernet_key>
-
+```
 ### 4. Airbyte Configuration
 
 Configure the following settings in Airbyte Cloud:
@@ -691,20 +693,20 @@ Test Execution Flow
 ## Running Commands
 ### dbt Commands
 bash
-# Navigate to dbt project
+### Navigate to dbt project
 cd dbt_project
 
-# Run all models
+### Run all models
 ```bash
 dbt run
 ```
-# Run specific models
+### Run specific models
 ```bash
 dbt run --select staging
 dbt run --select marts
 dbt run --select reporting
 ```
-## Running Tests
+### Running Tests
 ```bash
 # Run all tests
 dbt test
@@ -734,25 +736,25 @@ dbt clean
 ```
 ## Airflow Commands
 bash
-# Start Airflow
+### Start Airflow
 ```bash
 astro dev start
 ```
-# Stop Airflow
+### Stop Airflow
 ```bash
 astro dev stop
 ```
 
-# Restart Airflow
+### Restart Airflow
 ```bash
 astro dev restart
 ```
-# View logs
+### View logs
 ```bash
 astro dev logs
 ```
 
-# Kill all running containers
+### Kill all running containers
 ```bash
 astro dev kill
 ```
