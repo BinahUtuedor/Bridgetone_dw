@@ -2,25 +2,47 @@
 
 with base as (
 
-    select * from {{ ref('stg_store_files') }}
-
-),
-
-enhanced as (
-
     select
-        *,
-        
-        -- Derived metrics
-        quantity * unit_price as calculated_amount,
+        transaction_id,
+        store_id,
+        product_id,
+        customer_id,
+        transaction_timestamp,
+        product_name,
+        category,
+        quantity,
+        unit_price,
+        total_amount,
+        payment_method,
+        _airbyte_extracted_at
 
-        -- Date breakdown (VERY IMPORTANT for Power BI)
-        date(transaction_timestamp) as transaction_date,
-        extract(year from transaction_timestamp) as year,
-        extract(month from transaction_timestamp) as month
-
-    from base
+    from {{ ref('stg_store_files') }}
 
 )
 
-select * from enhanced
+select
+    transaction_id,
+    store_id,
+    product_id,
+    customer_id,
+    transaction_timestamp,
+    product_name,
+    category,
+    quantity,
+    unit_price,
+    total_amount,
+    payment_method,
+    _airbyte_extracted_at,
+
+    quantity * unit_price as calculated_amount,
+
+    date(transaction_timestamp)
+        as transaction_date,
+
+    extract(year from transaction_timestamp)
+        as year,
+
+    extract(month from transaction_timestamp)
+        as month
+
+from base

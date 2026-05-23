@@ -1,6 +1,6 @@
 {% macro incremental_filter(timestamp_column) %}
 
-{% if is_incremental() %}
+{% if execute and is_incremental() %}
 
 where {{ timestamp_column }} >
 (

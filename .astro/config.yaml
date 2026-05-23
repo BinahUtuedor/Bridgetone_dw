@@ -1,2 +1,12 @@
 project:
-    name: bridgetone-dw
+  name: bridgetone-dw
+  env:
+    - AIRBYTE_API_TOKEN
+    - AIRBYTE_CONNECTION_ID
+    - SNOWFLAKE_USER
+    - SNOWFLAKE_PASSWORD
+    - SNOWFLAKE_ACCOUNT
+    - SNOWFLAKE_ROLE
+    - SNOWFLAKE_WAREHOUSE
+    - SNOWFLAKE_DATABASE
+    - FERNET_KEY

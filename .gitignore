@@ -4,4 +4,7 @@ target/
 dbt_packages/
 logs/
 __pycache__/
-
+Bridgetone AI instructions.docx
+README.md
+include/
+*.pem

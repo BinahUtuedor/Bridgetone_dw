@@ -43,3 +43,7 @@ models:
     marts:
       +schema: MARTS
       +materialized: table
+
+    reporting:
+      +schema: REPORTING
+      +materialized: table

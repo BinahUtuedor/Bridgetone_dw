@@ -1,8 +1,13 @@
-astro
+.astro
 .git
 .env
 airflow_settings.yaml
 logs/
-.venv
+.venv/
+venv/
+__pycache__/
+*.pyc
 airflow.db
 airflow.cfg
+Bridgetone AI instructions.docx
+README.md

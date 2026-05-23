@@ -1,0 +1,17 @@
+dbt_project:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: DXTIXXJ-ZV52621
+      user: binahutuedor
+      authenticator: snowflake_jwt
+      private_key_path: include/snowflake_keys/private_key.pem
+
+      role: ACCOUNTADMIN
+      database: BRIDGESTONE_DW
+      warehouse: BRIDGESTONE_WH
+      schema: ANALYTICS
+
+      threads: 4
+      client_session_keep_alive: false

@@ -1,8 +1,12 @@
 {{ config(materialized='view') }}
 
-with source as (
+with ranked as (
 
-    select * 
+    select *,
+           row_number() over (
+               partition by transaction_id, product_id
+               order by _airbyte_extracted_at desc
+           ) as rn
     from {{ source('raw', 'STORE_FILES_RAW') }}
 
 ),
@@ -10,32 +14,38 @@ with source as (
 cleaned as (
 
     select
-        -- Primary identifiers
         transaction_id,
         store_id,
         product_id,
         customer_id,
 
-        -- Timestamps
-        try_to_timestamp(transaction_timestamp) as transaction_timestamp,
+        try_to_timestamp(transaction_timestamp)
+            as transaction_timestamp,
 
-        -- Product info
-        trim(product_name) as product_name,
-        trim(category) as category,
+        trim(product_name)
+            as product_name,
 
-        -- Measures
-        cast(quantity as integer) as quantity,
-        cast(unit_price as float) as unit_price,
-        cast(total_amount as float) as total_amount,
+        trim(category)
+            as category,
 
-        -- Payment
-        lower(payment_method) as payment_method,
+        cast(quantity as integer)
+            as quantity,
 
-        -- Metadata
+        cast(unit_price as float)
+            as unit_price,
+
+        cast(total_amount as float)
+            as total_amount,
+
+        lower(payment_method)
+            as payment_method,
+
         _airbyte_extracted_at
 
-    from source
+    from ranked
+    where rn = 1
 
 )
 
-select * from cleaned
+select *
+from cleaned

@@ -2,7 +2,7 @@
 
 md5(
     {% for column in columns %}
-        coalesce(cast({{ column }} as varchar), '')
+        coalesce(cast({{ column }} as string), '')
         {% if not loop.last %} || '|' || {% endif %}
     {% endfor %}
 )

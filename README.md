@@ -95,10 +95,10 @@ bridgestone_dw/
 │   │   │    └── facts/
 │   │   │         └── fct_store_sales.sql
 │   │   └── reporting/
-│   │        └── rpt_sales_summary
-│   │        └── rpt_monthly_store_sales
-│   │        └── rpt_product_performance
-│   │        └── rpt_customer_sales
+│   │        └── rpt_sales_summary.sql
+│   │        └── rpt_monthly_store_sales.sql
+│   │        └── rpt_product_performance.sql
+│   │        └── rpt_customer_sales.sql
 │   ├── macros/
 │   │   ├── generate_schema_name.sql
 │   │   ├── surrogate_keys.sql
@@ -118,11 +118,14 @@ bridgestone_dw/
 │   │     └── test_future_transactions.sql
 │   ├── dbt_project.yml
 │   └── README.md
+├──dbt_profiles/
+│    └──profiles.yml
 ├── dags/
 │    └──.airflowignore
 │    └──exampledag.py
 │    └── bridgestone_pipeline.py      # Airflow DAG
 ├── venv/
+├── .dockerignore
 ├── .env
 ├── .gitignore
 ├── README.md
@@ -999,6 +1002,22 @@ Start Airflow locally
 
 After init, run:
 
+Update .astro/config.yaml file to
+
+```text
+project:
+  name: bridgetone-dw
+  env:
+    - AIRBYTE_API_TOKEN
+    - AIRBYTE_CONNECTION_ID
+    - SNOWFLAKE_USER
+    - SNOWFLAKE_PASSWORD
+    - SNOWFLAKE_ACCOUNT
+    - SNOWFLAKE_ROLE
+    - SNOWFLAKE_WAREHOUSE
+    - SNOWFLAKE_DATABASE
+    - FERNET_KEY
+```
 astro dev start
 
 ## 📈 Future Enhancements

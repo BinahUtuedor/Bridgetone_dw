@@ -1,1 +1,4 @@
-FROM astrocrpublic.azurecr.io/runtime:3.2-5
+FROM astrocrpublic.azurecr.io/runtime:3.2-4
+
+RUN pip install apache-airflow-providers-http
+
