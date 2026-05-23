@@ -724,12 +724,14 @@ dbt test --store-failures
 dbt test --log-format json > test_results.json
 ```
 ## Generate documentation
+```bash
 dbt docs generate
 dbt docs serve
-
+```
 ## Debug connection
+```bash
 dbt debug
-
+```
 ## Clean dbt artifacts
 ```bash
 dbt clean
