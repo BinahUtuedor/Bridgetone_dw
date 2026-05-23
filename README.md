@@ -835,16 +835,8 @@ Pre-aggregated reporting tables for instant visuals
 
 Boolean flags (is_weekend, is_today, is_current_year)
 
-## Troubleshooting
-### Common Issues & Solutions
-# Troubleshooting Guide: dbt, Airbyte, Airflow, Snowflake
-
-This document provides solutions to common issues encountered in data pipelines using **dbt**, **Airbyte**, **Airflow (Astro)**, and **Snowflake**.
-
+## Troubleshooting Guide: dbt, Airbyte, Airflow, Snowflake
 ---
-
-## Issues & Solutions
-
 | Issue | Solution |
 |-------|----------|
 | **dbt cannot connect to Snowflake** | Check `.env` variables and `profiles.yml` |
@@ -886,7 +878,7 @@ This document provides solutions to common issues encountered in data pipelines 
   GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO ROLE your_role;
   ```
 
-### Useful Debug Queries
+## Useful Debug Queries
 
 ```sql
 -- Check row counts by schema
