@@ -331,29 +331,66 @@ AIRBYTE_API_TOKEN=<your_airbyte_token>
 AIRBYTE_CONNECTION_ID=<your_connection_id>
 FERNET_KEY=<generated_fernet_key>
 ```
-### 4. Airbyte Configuration
 
-Configure the following settings in Airbyte Cloud:
+## 4. Airbyte Configuration
 
-Source: Google Drive
+### Source Data Description
 
-Authenticate using a service account
-Select folder: /raw_csv/
-Glob pattern: *.csv
+The source data consists of CSV files located in a `data_2` folder within Google Drive. All files share an identical schema containing transaction data from retail stores.
 
-Destination: Snowflake
+**Source Files:**
+- Store_5_25-0.1.csv
+- Store_S001.csv
+- Store_S002.csv
+- Store_S003.csv
+- Store_S004.csv
+- Store_S005.csv
+- Store_S006.csv
+- Store_S007.csv
+- Store_S008.csv
+- Store_S009.csv
+- Store_S010.csv
 
-Database: BRIDGESTONE_DW
-Schema: RAW
-Table: STORE_FILES_RAW
+**Schema (all files):**
 
-Sync Configuration:
+| Column Name | Description |
+|-------------|-------------|
+| transaction_id | Unique transaction identifier |
+| transaction_timestamp | Date and time of transaction |
+| store_id | Store identifier |
+| product_id | Product identifier |
+| product_name | Name of the product |
+| category | Product category |
+| quantity | Number of units purchased |
+| unit_price | Price per unit |
+| total_amount | Total transaction amount |
+| payment_method | Payment type (Cash, Card, Transfer) |
+| customer_id | Customer identifier |
 
-Sync Mode: Incremental | Append + Deduped
-Frequency: Daily
-Primary Keys: Product_id and Transaction_id
+**Note:** All files have similar naming patterns within the same folder and are ingested as a single stream. Downstream transformations will be done in dbt-snowflake into staging, intermediate, mart and reporting layers.
 
-To modify connection settings after the initial setup, navigate to the relevant connection, open the Schema tab, select the desired stream, and update the configuration as needed.
+### Airbyte Cloud Configuration
+
+**Source: Google Drive**
+- Authentication: Service account
+- Folder: `/raw_csv/`
+- Glob pattern: `*.csv`
+
+**Destination: Snowflake**
+- Database: `BRIDGESTONE_DW`
+- Schema: `RAW`
+- Table: `STORE_FILES_RAW`
+
+**Sync Configuration:**
+- Sync Mode: Incremental | Append + Deduped
+- Frequency: Daily
+- Primary Keys: `product_id` and `transaction_id`
+
+**Testing:**
+- Test connection and start sync.
+
+**Modifying Settings:**
+To modify connection settings after initial setup, navigate to the relevant connection, open the Schema tab, select the desired stream, and update the configuration as needed.
 
 ### 5. dbt Setup
 Install dbt:
